@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<body>
+    <label>Image File:</label>
+    <br/>
+    <input type="file" id="imageLoader" name="imageLoader"/>
+    <button id="download">Download image</button>
+    <div id="container"></div>
+    <div id="shapes"></div>
+    <div id="hiddenCanvas"></div>
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/konva/konva.js"></script>
+    <script>
+      var imageLoader = $("#imageLoader");
+      imageLoader.on('change', handleImage);
+      var imageWidth = 800;
+      var imageHeight = 800;
+      var stage = new Konva.Stage({
+        container: "container",
+        width: imageWidth,
+        height: imageHeight
+      });
+
+      var layer = new Konva.Layer();
+      var circles = [];
+      var shapes = [];
+      var shapeLayers = [];
+      var shapeDrawingInProgess = false;
+      var imageObj = new Image();
+
+      imageObj.onload = function (ev) {
+        var image = new Konva.Image({
+          x: 0,
+          y: 0,
+          image: imageObj,
+          width: imageWidth,
+          height: imageHeight
+        });
+
+        layer.add(image);
+        stage.add(layer);
+      };
+
+      function handleImage(e) {
+        var reader = new FileReader();
+        reader.onload = function(event){
+          console.log(reader.naturalWidth);
+          imageObj.src = event.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+      }
+
+      function drawPoint(canvas, e) {
+        var pos = getMousePos(canvas, e.evt);
+        var layer = shapeLayers[shapeLayers.length - 1];
+        var circle = new Konva.Circle({
+          x: pos.x,
+          y: pos.y,
+          radius: 5,
+          fill: 'red',
+          stroke: 'black',
+          strokeWidth: 1,
+          name: "Point"
+        });
+
+        layer.add(circle);
+        stage.add(layer);
+
+        circles.push(circle);
+        if (shapeDrawingInProgess) {
+          drawLine();
+        } else {
+          shapeDrawingInProgess = true;
+          circle.on('click', function(e) {
+            shapeComplete();
+          });
+        }
+      }
+
+      function shapeComplete() {
+        drawPolygon();
+        shapeDrawingInProgess = false;
+        shapes.push(circles);
+        var tmpCircles = circles;
+        circles = [];
+
+        var span = $("<span></span>");
+        var div = $("<div></div>");
+        var text = "Shape " + shapes.length + ": [";
+        for (var i = 0; i < tmpCircles.length; i++) {
+            text += "[" + Math.round((imageObj.naturalWidth / imageWidth) * tmpCircles[i].attrs.x) + ", " + Math.round((imageObj.naturalHeight / imageHeight) * tmpCircles[i].attrs.y) + "], ";
+        }
+        text = text.substring(0, text.length - 2) + "]";
+        span.text(text);
+
+        var a = $("<a href='#' class='remove-btn'></a>");
+        a.text("Remove Shape " + shapes.length);
+        a.data("shapeId", shapes.length - 1);
+        a.on("click", function(){
+          shapeLayers[$(this).data().shapeId].remove();
+          div.remove();
+        });
+
+        div.append(span);
+        div.append(a);
+        $("#shapes").append(div);
+      }
+
+      function drawLine() {
+        var layer = shapeLayers[shapeLayers.length - 1];
+        var line = new Konva.Line({
+          points: getLastTwoPoints(),
+          stroke: "red",
+          strokeWidth: 5,
+          closed: false,
+          name: "Line",
+          listening: false
+        });
+        layer.add(line);
+        stage.add(layer);
+      }
+
+      function drawPolygon() {
+        var layer = shapeLayers[shapeLayers.length - 1];
+        var polygon = new Konva.Line({
+          points: getAllPoints(),
+          fill: "red",
+          stroke: "red",
+          strokeWidth: 5,
+          closed: true,
+          opacity: 0.4
+        });
+        layer.add(polygon);
+        stage.add(layer);
+      }
+
+      stage.on('click', function(e) {
+        if (!imageObj.src) {
+          return
+        }
+        if (!e.target.hasName("Point") && !e.target.hasName("Line")) {
+          if(!shapeDrawingInProgess) {
+            shapeLayers.push(new Konva.Layer())
+          }
+          drawPoint(this.content, e);
+        }
+      });
+
+      function getMousePos(canvas, event) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      }
+
+      function getLastTwoPoints() {
+        if (circles.length < 1) return;
+        var c1 = circles[circles.length - 2];
+        var c2 = circles[circles.length - 1];
+        return [c1.attrs.x, c1.attrs.y, c2.attrs.x, c2.attrs.y];
+      }
+
+      function getAllPoints() {
+        var arr = [];
+        for (var i = 0; i < circles.length; i++) {
+          arr.push(circles[i].attrs.x);
+          arr.push(circles[i].attrs.y);
+        }
+        return arr;
+      }
+      $("#download").on("click", function(e) {
+        var dataURL = stage.toDataURL();
+        downloadUri(dataURL, 'stage.png');
+      });
+
+      function downloadUri(uri, name) {
+        var link = document.createElement("a");
+        link.download = name;
+        link.href = uri;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        delete link;
+      }
+
+    </script>
+</body>
+
+</html>
