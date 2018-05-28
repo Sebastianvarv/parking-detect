@@ -1,143 +1,88 @@
-import argparse
-import os
 import python.darknet as dn
-# video reading
-import numpy as np
 import cv2
-from time import sleep
+import numpy as np
 
 
+# initializes the yolonet
 def init_net():
-	net = dn.load_net("cfg/tiny-yolo.cfg", "tiny-yolo.weights", 0)
-	meta = dn.load_meta("cfg/coco.data")
+	net = dn.load_net("yolonet/cfg/yolov2-tiny.cfg", "yolonet/yolov2-tiny.weights", 0)
+	meta = dn.load_meta("yolonet/cfg/coco.data")
 	return net, meta
 
 
-def detect_video(video_loc, frames_to_skip, out_dir, threshold):
-	# Start yolonet
-	net, meta = init_net()
-
-	nr = 0
-	skip = frames_to_skip
+# detects cars from frame and crops them out
+# inputs:
+# frame: opencv frame(image)
+# frame_nr: number of frame (to distinguish between frames)
+# threshold: used by yolonet - lower means more noise, higher might not detect everything
+# net: see init_net
+# meta: see init_net
+# outputs:
+# list of tuples that contains cropped car and its coordinates from initial image (cropped car, x1, y1, x2, y2)
+def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, park_spot_coordinates, doShow=False):
 	frames_loc = 'videoframes'
-	cropped_cars_loc = 'cropped-cars'
-	other_object_loc = 'notcar'
-	files_with_cars = []
+	cropped_cars_loc = 'cropped_cars'
 
-	if not os.path.exists(frames_loc):
-		os.makedirs(frames_loc)
+	# contains tuples with cropped cars and its opencv coordinates
+	out = []
 
-	if not os.path.exists(out_dir):
-		os.makedirs(out_dir)
+	# save the frame so darknet could detect it
+	name = frames_loc + '/frame' + str(frame_nr) + '.jpg'
+	cv2.imwrite(name, frame)
 
-	if not os.path.exists(cropped_cars_loc):
-		os.makedirs(cropped_cars_loc)
+	# detect objects from the frame
+	r = dn.detect(net, meta, name, thresh=threshold)
 
-	if not os.path.exists(other_object_loc):
-		os.makedirs(other_object_loc)
+	# only check for cars and trucks
+	cars = [x for x in r if x[0] in ['car', 'truck']]
 
-	# Read input video using cv2
-	cap = cv2.VideoCapture(video_loc)
+	# Find the cars and crop them out
+	if len(cars) > 0:
+		for idx, car in enumerate(cars):
+			x, y, w, h = car[2]
+			x1, y1 = int(x + (w / 2)), int(y + (h / 2))
+			x2, y2 = int(x - (w / 2)), int(y - (h / 2))
 
-	# output video dir
-	fourcc = cv2.VideoWriter_fourcc(*'XVID')
-	out = cv2.VideoWriter('output.avi', fourcc, cap.get(cv2.CAP_PROP_FPS), (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+			# clip negative values
+			x1 = 1 if x1 < 1 else x1
+			x2 = 1 if x2 < 1 else x2
+			y1 = 1 if y1 < 1 else y1
+			y2 = 1 if y2 < 1 else y2
 
-	# Get the dimensions
-	video_h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-	video_w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+			# check if car in coordinates
 
-	# TODO check if open axxually, happens when the skip rate is too high
+			# # draw rectangle around a car
+			# cv2.rectangle(frame, (x2, y2), (x1, y1), (0, 0, 255), 3)
 
-	while cap.isOpened():
-
-		ret, frame = cap.read()
-
-		# Stop if the video is over
-		if not ret:
-			break
-
-		nr += 1
-
-		if nr % skip != 0:
-			continue
-
-		# save the frame so darknet could detect it
-		# could be skipped and feed image straight to network
-		name = frames_loc + '/frame' + str(nr) + '.jpg'
-		cv2.imwrite(name, frame)
-
-		r = dn.detect(net, meta, name, thresh=threshold)
-
-		# only save image if there is a car in frame
-		cars = [x for x in r if x[0] in ['car', 'truck']]
-
-		# what are we missing?
-		others = [x for x in r if x[0] not in ['car', 'truck']]
-
-		# crop out cars
-		if len(cars) > 0:
-			for idx, car in enumerate(cars):
-				x, y, w, h = car[2]
-				x1, y1 = int(x+(w/2)), int(y+(h/2))
-				x2, y2 = int(x-(w/2)), int(y-(h/2))
-
-				cv2.imwrite(cropped_cars_loc + '/frame' + str(nr) + 'car' + str(idx) + '.jpg', frame[y2:y1, x2:x1])
-
-		# draw rectangle around not car
-		if len(others) > 0:
-			for other in others:
-				x, y, w, h = other[2]
-				frame = cv2.rectangle(frame, (int(x+(w/2)), int(y+(h/2))), (int(x-(w/2)), int(y-(h/2))), (255, 0, 0), 3)
-				frame = cv2.circle(frame, (int(x), int(y)), 3, (255, 255, 255), -1)
-				frame = cv2.putText(frame, other[0], (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-
-			outname = other_object_loc + '/frame' + str(nr) + '.jpg'
-			files_with_cars.append(outname)
-			cv2.imwrite(outname, frame)
-
-		# draw rectangles around car
-		if len(cars) > 0:
-			for car in cars:
-				x, y, w, h = car[2]
-				x1, y1 = int(x+(w/2)), int(y+(h/2))
-				x2, y2 = int(x-(w/2)), int(y-(h/2))
-
-				frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
-				frame = cv2.circle(frame, (int(x), int(y)), 3, (255, 255, 255), -1)
-
-			outname = out_dir + '/frame' + str(nr) + '.jpg'
-			files_with_cars.append(outname)
-			cv2.imwrite(outname, frame)
-
-		out.write(frame)
-		#cv2.imshow('frame', frame)
-
-		print "Found {} car(s) from frame {}".format(str(len(cars)), str(nr))
-
-		for _, conf, coords in cars:
-			print "\tConfidence {}".format(conf)
-
-	print "Files with cars: {}".format(", ".join(files_with_cars))
-	cap.release()
-	out.release()
-	cv2.destroyAllWindows()
-	import shutil
-	shutil.rmtree(frames_loc, ignore_errors=False)
+			# # bottom left corner
+			# print cv2.pointPolygonTest(park_spot_coordinates, (x1, y1), False)
+			#
+			# # upper right corner
+			# print cv2.pointPolygonTest(park_spot_coordinates, (x2, y2), False)
 
 
-parser = argparse.ArgumentParser()
 
-parser.add_argument("-v", "--video", help="path to input video", required=True)
-parser.add_argument("-o", "--output", help="output path for detected cars",
-					default="detected_cars")
-parser.add_argument("-s", "--skip", help="number of frames to skip",
-					default=15, type=int)
-parser.add_argument("-t", "--threshold", help="threshold for darknet",
-					default=0.5, type=float)
+			# # draw the parking spot
+			#
+			# pts = park_spot_coordinates.reshape((-1, 1, 2))
+			# cv2.polylines(frame, [pts], True, (0, 255, 255))
+			#
+			# cv2.imshow('parkspot', frame)
+			# cv2.waitKey(0) & 0xFF
 
-args = parser.parse_args()
-print 'args'
-print args
+			# check if center of the car is inside parking spot
+			if cv2.pointPolygonTest(park_spot_coordinates, (x, y), False) == 1.0:
+				cropped_frame = frame[y2:y1, x2:x1]
 
-detect_video(args.video, args.skip, args.output, args.threshold)
+				frame_name = cropped_cars_loc + '/frame' + str(frame_nr) + 'car' + str(idx) + '.jpg'
+
+				cv2.imwrite(frame_name, cropped_frame)
+
+				out.append((frame_name, x1, y1, x2, y2))
+
+				if doShow:
+					print("heia")
+					cv2.imshow('car', cropped_frame)
+					cv2.waitKey(0) & 0xFF
+
+	return out
