@@ -6,11 +6,14 @@
     <link rel="stylesheet" type="text/css" href="main.css">
 </head>
 <body>
-    <label>Image File:</label>
+    <label>Frame:</label>
     <br/>
     <input type="file" id="imageLoader" name="imageLoader"/>
+    <input type="text" id="video-name" placeholder="video-name">
+    <input type="number" id="skip-frames" placeholder="Number of frames to skip">
+    <input type="text" id="threshold" placeholder="Threshold">
     <button id="send-coordinates">Send coordinates to server</button>
-    <button id="download">Download image</button>
+
     <div id="container"></div>
     <div id="shapes"></div>
     <div id="hiddenCanvas"></div>
@@ -199,7 +202,10 @@
             Math.round((imageObj.naturalHeight / imageHeight) * shape[i].attrs.y)])
         }
         axios.post("http://localhost:5000/parking", {
-          coordinates:coords
+          coordinates:coords,
+          videoName: $("#video-name").val(),
+          framesToSkip: $("#skip-frames").val(),
+          threshold: $("#threshold").val()
         })
           .then(function (response) {
             console.log(response);

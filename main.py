@@ -13,11 +13,14 @@ CORS(app)
 
 @app.route("/parking", methods=['POST'])
 def parking():
-	print ("received stuff")
-	content = request.get_json()
+    content = request.get_json()
 	coordinates = np.array(content["coordinates"])
-	detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
-	return "OK"
+    video_name = content["videoName"]
+    frames_to_skip = int(content["framesToSkip"])
+    threshold = float(content["threshold"])
+    #detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
+    detect_cars_from_video(video_name, frames_to_skip, threshold, coordinates)
+    return "OK"
 
 
 # read a video file and detect all cars from it
