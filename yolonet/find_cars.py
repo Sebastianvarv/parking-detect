@@ -20,6 +20,7 @@ def init_net():
 # list of tuples that contains cropped car and its coordinates from initial image (cropped car, x1, y1, x2, y2)
 def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, doShow=False):
 	frames_loc = 'videoframes'
+	cropped_cars_loc = 'cropped_cars'
 
 	# contains tuples with cropped cars and its opencv coordinates
 	out = []
@@ -43,7 +44,11 @@ def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, doShow=False):
 
 			cropped_frame = frame[y2:y1, x2:x1]
 
-			out.append((cropped_frame, x1, y1, x2, y2))
+			frame_name = cropped_cars_loc + '/frame' + str(frame_nr) + 'car' + str(idx) + '.jpg'
+
+			cv2.imwrite(frame_name, cropped_frame)
+
+			out.append((frame_name, x1, y1, x2, y2))
 
 			if doShow:
 				cv2.imshow('car', cropped_frame)

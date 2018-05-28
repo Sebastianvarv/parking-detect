@@ -15,9 +15,13 @@ def detect_cars_from_video(video_loc, frames_to_skip, threshold):
 	nr = 0
 	skip = frames_to_skip
 	frames_loc = 'videoframes'
+	cropped_cars_loc = 'cropped_cars'
 
 	if not os.path.exists(frames_loc):
 		os.makedirs(frames_loc)
+
+	if not os.path.exists(cropped_cars_loc):
+		os.makedirs(cropped_cars_loc)
 
 	# Read input video using cv2
 	cap = cv2.VideoCapture(video_loc)
