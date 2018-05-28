@@ -9,12 +9,14 @@
     <label>Image File:</label>
     <br/>
     <input type="file" id="imageLoader" name="imageLoader"/>
+    <button id="send-coordinates">Send coordinates to server</button>
     <button id="download">Download image</button>
     <div id="container"></div>
     <div id="shapes"></div>
     <div id="hiddenCanvas"></div>
     <script src="node_modules/jquery/dist/jquery.min.js"></script>
     <script src="node_modules/konva/konva.js"></script>
+    <script src="node_modules/axios/dist/axios.min.js"></script>
     <script>
       var imageLoader = $("#imageLoader");
       imageLoader.on('change', handleImage);
@@ -32,6 +34,7 @@
       var shapeLayers = [];
       var shapeDrawingInProgess = false;
       var imageObj = new Image();
+      var shapeIdCounter = 0;
 
       imageObj.onload = function (ev) {
         var image = new Konva.Image({
@@ -100,15 +103,15 @@
 
         var a = $("<a href='#' class='remove-btn'></a>");
         a.text("Remove Shape " + shapes.length);
-        a.data("shapeId", shapes.length - 1);
+        a.data("shapeId", shapeIdCounter);
         a.on("click", function(){
           shapeLayers[$(this).data().shapeId].remove();
           div.remove();
         });
-
         div.append(span);
         div.append(a);
         $("#shapes").append(div);
+        shapeIdCounter++;
       }
 
       function drawLine() {
@@ -174,20 +177,18 @@
         }
         return arr;
       }
-      $("#download").on("click", function(e) {
-        var dataURL = stage.toDataURL();
-        downloadUri(dataURL, 'stage.png');
-      });
 
-      function downloadUri(uri, name) {
-        var link = document.createElement("a");
-        link.download = name;
-        link.href = uri;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        delete link;
-      }
+      $("#send-coordinates").on("click", function() {
+        axios.post("http://localhost:5000/parking", {
+          coordinates:
+        })
+          .then(function (response) {
+            console.log(response);
+          })
+          .catch(function (error) {
+            console.log(error);
+          });
+      });
 
     </script>
 </body>
