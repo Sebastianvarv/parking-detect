@@ -4,6 +4,17 @@ import cv2
 import shutil
 from yolonet import find_cars
 import numpy as np
+from flask import Flask, request, send_file
+from flask_cors import CORS
+app = Flask(__name__)
+CORS(app)
+
+@app.route("/parking", methods=['POST'])
+def parking():
+    content = request.get_json()
+    coordinates = content["coordinates"]
+    detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
+    return "OK"
 
 
 # read a video file and detect all cars from it
@@ -70,7 +81,7 @@ if __name__ == '__main__':
 	print args
 
 	# todo placeholder - this is what we get from frontend
-	coordinates = np.array([[1236, 544], [1825, 536], [1832, 305], [1324, 342]])
+	# coordinates = np.array([[1236, 544], [1825, 536], [1832, 305], [1324, 342]])
 
-	detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
+	#detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
 

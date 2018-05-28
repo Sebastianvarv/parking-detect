@@ -31,6 +31,7 @@
       var layer = new Konva.Layer();
       var circles = [];
       var shapes = [];
+      var coordinates = {};
       var shapeLayers = [];
       var shapeDrawingInProgess = false;
       var imageObj = new Image();
@@ -89,6 +90,7 @@
         drawPolygon();
         shapeDrawingInProgess = false;
         shapes.push(circles);
+        coordinates[shapeIdCounter] = circles;
         var tmpCircles = circles;
         circles = [];
 
@@ -106,6 +108,7 @@
         a.data("shapeId", shapeIdCounter);
         a.on("click", function(){
           shapeLayers[$(this).data().shapeId].remove();
+          delete coordinates[$(this).data().shapeId];
           div.remove();
         });
         div.append(span);
@@ -179,8 +182,24 @@
       }
 
       $("#send-coordinates").on("click", function() {
+        //Only first shape will be sent
+        var shape;
+        var first = true;
+        Object.keys(coordinates).forEach(function(key) {
+          if (first) {
+            shape = coordinates[key];
+          }
+          first = false;
+        });
+        var coords = []
+        for (var i = 0; i < shape.length; i++) {
+          //text += "[" + Math.round((imageObj.naturalWidth / imageWidth) * tmpCircles[i].attrs.x) + ", " + Math.round((imageObj.naturalHeight / imageHeight) * tmpCircles[i].attrs.y) + "], ";
+          coords.push([
+            Math.round((imageObj.naturalWidth / imageWidth) * shape[i].attrs.x),
+            Math.round((imageObj.naturalHeight / imageHeight) * shape[i].attrs.y)])
+        }
         axios.post("http://localhost:5000/parking", {
-          coordinates:
+          coordinates:coords
         })
           .then(function (response) {
             console.log(response);
