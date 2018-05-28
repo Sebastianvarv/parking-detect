@@ -1,3 +1,17 @@
 # Created by .ignore support plugin (hsz.mobi)
 /drawOnImage/node_modules/
 /drawOnImage/.idea/
+
+*.xml
+
+*.jpg
+
+*.pyc
+
+*.weights
+
+*.iml
+
+*.mp4
+
+*.avi

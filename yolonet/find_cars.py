@@ -1,8 +1,6 @@
 import python.darknet as dn
 import cv2
-import numpy as np
 import subprocess
-import shutil
 
 
 # initializes the yolonet
@@ -25,6 +23,8 @@ def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, park_spot_coor
 	frames_loc = 'videoframes'
 	cropped_cars_loc = 'cropped_cars'
 	detected_plate = None
+	font = cv2.FONT_HERSHEY_SIMPLEX
+	frame_copy = frame.copy()
 
 	# contains tuples with cropped cars and its opencv coordinates
 	out = []
@@ -52,20 +52,9 @@ def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, park_spot_coor
 			y1 = 1 if y1 < 1 else y1
 			y2 = 1 if y2 < 1 else y2
 
-			# check if car in coordinates
-
-			# # draw rectangle around a car
-			# cv2.rectangle(frame, (x2, y2), (x1, y1), (0, 0, 255), 3)
-
-			# # bottom left corner
-			# print cv2.pointPolygonTest(park_spot_coordinates, (x1, y1), False)
-			#
-			# # upper right corner
-			# print cv2.pointPolygonTest(park_spot_coordinates, (x2, y2), False)
-
 			# check if center of the car is inside parking spot
 			if cv2.pointPolygonTest(park_spot_coordinates, (x, y), False) == 1.0:
-				cropped_frame = frame[y2:y1, x2:x1]
+				cropped_frame = frame_copy[y2:y1, x2:x1]
 
 				frame_name = cropped_cars_loc + '/frame' + str(frame_nr) + 'car' + str(idx) + '.jpg'
 
@@ -78,25 +67,21 @@ def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, park_spot_coor
 					if "confidence" in output:
 						line1 = output.split('\n')[1]
 						detected_plate = line1.split('\t')[0].strip(" \t-")
-						print "Detected number plate ololo: " + detected_plate
+						print "Detected number plate: " + detected_plate
 						if detected_plate is not None:
-							font = cv2.FONT_HERSHEY_SIMPLEX
 							cv2.putText(frame, detected_plate, (x2, y2), font, 2, (255, 0, 0), 2, cv2.LINE_AA)
 				except:
 					pass
 
 				# draw rectangle around a car
 				cv2.rectangle(frame, (x2, y2), (x1, y1), (0, 255, 0), 3)
-
-
-
 			else:
 				# draw rectangle around a car
 				cv2.rectangle(frame, (x2, y2), (x1, y1), (0, 0, 255), 3)
 
 
 	# draw the parking spot
-	cv2.polylines(frame, [park_spot_coordinates.reshape((-1, 1, 2))], True, (0, 255, 255))
+	cv2.polylines(frame, [park_spot_coordinates.reshape((-1, 1, 2))], True, (0, 255, 255), 2)
 
 	if True:
 		cv2.imshow('Frame', frame)

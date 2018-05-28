@@ -1,10 +1,9 @@
-import argparse
 import os
 import cv2
 import shutil
 from yolonet import find_cars
 import numpy as np
-from flask import Flask, request, send_file
+from flask import Flask, request
 from flask_cors import CORS
 
 app = Flask("asi")
@@ -13,14 +12,14 @@ CORS(app)
 
 @app.route("/parking", methods=['POST'])
 def parking():
-    content = request.get_json()
+	content = request.get_json()
 	coordinates = np.array(content["coordinates"])
-    video_name = content["videoName"]
-    frames_to_skip = int(content["framesToSkip"])
-    threshold = float(content["threshold"])
-    #detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
-    detect_cars_from_video(video_name, frames_to_skip, threshold, coordinates)
-    return "OK"
+	video_name = content["videoName"]
+	frames_to_skip = int(content["framesToSkip"])
+	threshold = float(content["threshold"])
+	#detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
+	detect_cars_from_video(video_name, frames_to_skip, threshold, coordinates)
+	return "OK"
 
 
 # read a video file and detect all cars from it
@@ -81,15 +80,4 @@ def detect_cars_from_video(video_loc, frames_to_skip, threshold, park_spot_coord
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-
-	parser.add_argument("-v", "--video", help="path to input video", required=True)
-
-	parser.add_argument("-s", "--skip", help="number of frames to skip", default=15, type=int)
-
-	parser.add_argument("-t", "--threshold", help="threshold for darknet", default=0.5, type=float)
-
-	args = parser.parse_args()
-	print 'args'
-	print args
 	app.run(port=5000)
