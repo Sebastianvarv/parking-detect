@@ -1,5 +1,6 @@
 import python.darknet as dn
 import cv2
+import numpy as np
 
 
 # initializes the yolonet
@@ -18,7 +19,7 @@ def init_net():
 # meta: see init_net
 # outputs:
 # list of tuples that contains cropped car and its coordinates from initial image (cropped car, x1, y1, x2, y2)
-def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, doShow=False):
+def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, park_spot_coordinates, doShow=False):
 	frames_loc = 'videoframes'
 	cropped_cars_loc = 'cropped_cars'
 
@@ -42,16 +43,46 @@ def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, doShow=False):
 			x1, y1 = int(x + (w / 2)), int(y + (h / 2))
 			x2, y2 = int(x - (w / 2)), int(y - (h / 2))
 
-			cropped_frame = frame[y2:y1, x2:x1]
+			# clip negative values
+			x1 = 1 if x1 < 1 else x1
+			x2 = 1 if x2 < 1 else x2
+			y1 = 1 if y1 < 1 else y1
+			y2 = 1 if y2 < 1 else y2
 
-			frame_name = cropped_cars_loc + '/frame' + str(frame_nr) + 'car' + str(idx) + '.jpg'
+			# check if car in coordinates
 
-			cv2.imwrite(frame_name, cropped_frame)
+			# # draw rectangle around a car
+			# cv2.rectangle(frame, (x2, y2), (x1, y1), (0, 0, 255), 3)
 
-			out.append((frame_name, x1, y1, x2, y2))
+			# # bottom left corner
+			# print cv2.pointPolygonTest(park_spot_coordinates, (x1, y1), False)
+			#
+			# # upper right corner
+			# print cv2.pointPolygonTest(park_spot_coordinates, (x2, y2), False)
 
-			if doShow:
-				cv2.imshow('car', cropped_frame)
-				cv2.waitKey(0) & 0xFF
+
+
+			# # draw the parking spot
+			#
+			# pts = park_spot_coordinates.reshape((-1, 1, 2))
+			# cv2.polylines(frame, [pts], True, (0, 255, 255))
+			#
+			# cv2.imshow('parkspot', frame)
+			# cv2.waitKey(0) & 0xFF
+
+			# check if center of the car is inside parking spot
+			if cv2.pointPolygonTest(park_spot_coordinates, (x, y), False) == 1.0:
+				cropped_frame = frame[y2:y1, x2:x1]
+
+				frame_name = cropped_cars_loc + '/frame' + str(frame_nr) + 'car' + str(idx) + '.jpg'
+
+				cv2.imwrite(frame_name, cropped_frame)
+
+				out.append((frame_name, x1, y1, x2, y2))
+
+				if doShow:
+					print("heia")
+					cv2.imshow('car', cropped_frame)
+					cv2.waitKey(0) & 0xFF
 
 	return out

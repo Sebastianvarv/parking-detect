@@ -3,10 +3,11 @@ import os
 import cv2
 import shutil
 from yolonet import find_cars
+import numpy as np
 
 
 # read a video file and detect all cars from it
-def detect_cars_from_video(video_loc, frames_to_skip, threshold):
+def detect_cars_from_video(video_loc, frames_to_skip, threshold, park_spot_coordinates):
 
 	# Start yolonet
 	net, meta = find_cars.init_net()
@@ -26,6 +27,9 @@ def detect_cars_from_video(video_loc, frames_to_skip, threshold):
 	# Read input video using cv2
 	cap = cv2.VideoCapture(video_loc)
 
+	# video_h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+	# video_w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+
 	while cap.isOpened():
 		# check if open axxually, happens when the skip rate is too high
 		if not cap.isOpened():
@@ -42,7 +46,7 @@ def detect_cars_from_video(video_loc, frames_to_skip, threshold):
 		if nr % skip != 0:
 			continue
 
-		detected_cars = find_cars.detect_cars_from_frame(frame, nr, threshold, net, meta)
+		detected_cars = find_cars.detect_cars_from_frame(frame, nr, threshold, net, meta, park_spot_coordinates)
 
 		print "Found {} car(s) from frame {}".format(str(len(detected_cars)), str(nr))
 
@@ -65,5 +69,8 @@ if __name__ == '__main__':
 	print 'args'
 	print args
 
-	detect_cars_from_video(args.video, args.skip, args.threshold)
+	# todo placeholder - this is what we get from frontend
+	coordinates = np.array([[1236, 544], [1825, 536], [1832, 305], [1324, 342]])
+
+	detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
 
