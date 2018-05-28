@@ -6,15 +6,18 @@ from yolonet import find_cars
 import numpy as np
 from flask import Flask, request, send_file
 from flask_cors import CORS
-app = Flask(__name__)
+
+app = Flask("asi")
 CORS(app)
+
 
 @app.route("/parking", methods=['POST'])
 def parking():
-    content = request.get_json()
-    coordinates = content["coordinates"]
-    detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
-    return "OK"
+	print ("received stuff")
+	content = request.get_json()
+	coordinates = np.array(content["coordinates"])
+	detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
+	return "OK"
 
 
 # read a video file and detect all cars from it
@@ -38,8 +41,10 @@ def detect_cars_from_video(video_loc, frames_to_skip, threshold, park_spot_coord
 	# Read input video using cv2
 	cap = cv2.VideoCapture(video_loc)
 
-	# video_h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-	# video_w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+	# output video dir
+	fourcc = cv2.VideoWriter_fourcc(*'XVID')
+	out = cv2.VideoWriter('output.avi', fourcc, cap.get(cv2.CAP_PROP_FPS),
+						  (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))))
 
 	while cap.isOpened():
 		# check if open axxually, happens when the skip rate is too high
@@ -47,6 +52,9 @@ def detect_cars_from_video(video_loc, frames_to_skip, threshold, park_spot_coord
 			break
 
 		ret, frame = cap.read()
+
+		if nr == 0:
+			cv2.imwrite("frame0.jpg", frame)
 
 		# Stop if the video is over
 		if not ret:
@@ -57,11 +65,13 @@ def detect_cars_from_video(video_loc, frames_to_skip, threshold, park_spot_coord
 		if nr % skip != 0:
 			continue
 
-		detected_cars = find_cars.detect_cars_from_frame(frame, nr, threshold, net, meta, park_spot_coordinates)
+		detected_cars, frame_with_cars = find_cars.detect_cars_from_frame(frame, nr, threshold, net, meta, park_spot_coordinates)
 
 		print "Found {} car(s) from frame {}".format(str(len(detected_cars)), str(nr))
+		out.write(frame_with_cars)
 
 	cap.release()
+	out.release()
 	cv2.destroyAllWindows()
 
 	shutil.rmtree(frames_loc, ignore_errors=False)
@@ -79,9 +89,4 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	print 'args'
 	print args
-	app.run()
-
-	# todo placeholder - this is what we get from frontend
-	# coordinates = np.array([[1236, 544], [1825, 536], [1832, 305], [1324, 342]])
-
-	#detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
+	app.run(port=5000)

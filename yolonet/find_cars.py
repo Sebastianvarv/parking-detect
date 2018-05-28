@@ -1,6 +1,8 @@
 import python.darknet as dn
 import cv2
 import numpy as np
+import subprocess
+import shutil
 
 
 # initializes the yolonet
@@ -22,6 +24,7 @@ def init_net():
 def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, park_spot_coordinates, doShow=False):
 	frames_loc = 'videoframes'
 	cropped_cars_loc = 'cropped_cars'
+	detected_plate = None
 
 	# contains tuples with cropped cars and its opencv coordinates
 	out = []
@@ -60,16 +63,6 @@ def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, park_spot_coor
 			# # upper right corner
 			# print cv2.pointPolygonTest(park_spot_coordinates, (x2, y2), False)
 
-
-
-			# # draw the parking spot
-			#
-			# pts = park_spot_coordinates.reshape((-1, 1, 2))
-			# cv2.polylines(frame, [pts], True, (0, 255, 255))
-			#
-			# cv2.imshow('parkspot', frame)
-			# cv2.waitKey(0) & 0xFF
-
 			# check if center of the car is inside parking spot
 			if cv2.pointPolygonTest(park_spot_coordinates, (x, y), False) == 1.0:
 				cropped_frame = frame[y2:y1, x2:x1]
@@ -80,9 +73,33 @@ def detect_cars_from_frame(frame, frame_nr, threshold, net, meta, park_spot_coor
 
 				out.append((frame_name, x1, y1, x2, y2))
 
-				if doShow:
-					print("heia")
-					cv2.imshow('car', cropped_frame)
-					cv2.waitKey(0) & 0xFF
+				try:
+					output = subprocess.check_output(["alpr", "-c", "eu", frame_name])
+					if "confidence" in output:
+						line1 = output.split('\n')[1]
+						detected_plate = line1.split('\t')[0].strip(" \t-")
+						print "Detected number plate ololo: " + detected_plate
+						if detected_plate is not None:
+							font = cv2.FONT_HERSHEY_SIMPLEX
+							cv2.putText(frame, detected_plate, (x2, y2), font, 2, (255, 0, 0), 2, cv2.LINE_AA)
+				except:
+					pass
 
-	return out
+				# draw rectangle around a car
+				cv2.rectangle(frame, (x2, y2), (x1, y1), (0, 255, 0), 3)
+
+
+
+			else:
+				# draw rectangle around a car
+				cv2.rectangle(frame, (x2, y2), (x1, y1), (0, 0, 255), 3)
+
+
+	# draw the parking spot
+	cv2.polylines(frame, [park_spot_coordinates.reshape((-1, 1, 2))], True, (0, 255, 255))
+
+	if True:
+		cv2.imshow('Frame', frame)
+		cv2.waitKey(1) & 0xFF
+
+	return out, frame
