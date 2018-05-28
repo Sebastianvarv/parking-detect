@@ -4,6 +4,7 @@ import yolonet.python.darknet as dn
 import cv2
 import subprocess
 import shutil
+import numpy as np
 
 def init():
     net = dn.load_net("yolonet/cfg/yolov2-tiny.cfg", "yolonet/yolov2-tiny.weights", 0)
@@ -53,6 +54,10 @@ def detect_video(video_loc, frames_to_skip, out_dir, threshold):
 
         nr += 1
 
+        park_spot_coordinates = np.array([[1236, 544], [1825, 536], [1832, 305], [1324, 342]])
+        pts = park_spot_coordinates.reshape((-1, 1, 2))
+        cv2.polylines(frame, [pts], True, (0, 255, 255))
+
         if nr % skip == 0:
             name = frames_loc + '/frame' + str(nr) + '.jpg'
             cv2.imwrite(name, frame)
@@ -75,25 +80,28 @@ def detect_video(video_loc, frames_to_skip, out_dir, threshold):
                     y1 = 1 if y1 < 1 else y1
                     y2 = 1 if y2 < 1 else y2
 
-                    path_to_frame = cropped_cars_loc + '/frame' + str(nr) + 'car' + str(idx) + '.jpg'
-                    cv2.imwrite(path_to_frame, frame[y2:y1, x2:x1])
-                    frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
-                    frame = cv2.circle(frame, (int(x), int(y)), 3, (255, 255, 255), -1)
+                    if cv2.pointPolygonTest(park_spot_coordinates, (x, y), False) == 1.0:
+                        cropped_frame = frame[y2:y1, x2:x1]
+                        frame_name = cropped_cars_loc + '/frame' + str(nr) + 'car' + str(idx) + '.jpg'
+                        cv2.imwrite(frame_name, cropped_frame)
+                        frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
+                        frame = cv2.circle(frame, (int(x), int(y)), 3, (255, 255, 255), -1)
 
-                    try:
-                        output = subprocess.check_output(
-                            ["alpr", "-c", "eu", "./cropped-cars/frame" + str(nr) + 'car' + str(idx) + ".jpg"])
-                        if "confidence" in output:
-                            line1 = output.split('\n')[1]
-                            detected_plate = line1.split('\t')[0].strip(" \t-")
-                            print "Detected number plate ololo: " + detected_plate
-                    except:
-                        pass
+                        try:
+                            output = subprocess.check_output(
+                                ["alpr", "-c", "eu", "./cropped-cars/frame" + str(nr) + 'car' + str(idx) + ".jpg"])
+                            if "confidence" in output:
+                                line1 = output.split('\n')[1]
+                                detected_plate = line1.split('\t')[0].strip(" \t-")
+                                print "Detected number plate ololo: " + detected_plate
+                        except:
+                            pass
 
         if detected_plate is not None:
             font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(frame, detected_plate, (30, 100), font, 4, (255, 0, 0), 2,
+            cv2.putText(frame, detected_plate, (30, 100), font, 2, (255, 0, 0), 2,
                         cv2.LINE_AA)
+
         out.write(frame)
 
     print "Found {} car(s) from frame {}".format(str(len(cars)), str(nr))
