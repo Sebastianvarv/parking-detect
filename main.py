@@ -79,9 +79,9 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	print 'args'
 	print args
+	app.run()
 
 	# todo placeholder - this is what we get from frontend
 	# coordinates = np.array([[1236, 544], [1825, 536], [1832, 305], [1324, 342]])
 
 	#detect_cars_from_video(args.video, args.skip, args.threshold, coordinates)
-
